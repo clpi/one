@@ -1,14 +1,49 @@
+pub mod routes;
 use axum::{
-    routing::{get, post},
+    body::Bytes,
+    error_handling::HandleErrorLayer,
+    extract::{DefaultBodyLimit, Path, State},
+    handler::Handler,
+    response::{Html, IntoResponse, Json},
+    routing::{get, post, delete},
     http::StatusCode,
-    Json, Router,
+    Router,
+};
+use tower::{ServiceBuilder, BoxError};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+    sync::{Arc, RwLock},
+    time::Duration,
+};
+use tower_http::{
+    compression::CompressionLayer,
+    limit::RequestBodyLimitLayer,
+    trace::TraceLayer,
+    validate_request::ValidateRequestHeaderLayer,
 };
 use serde::{Deserialize, Serialize};
+use tracing_subscriber::{
+    layer::SubscriberExt,
+    util::SubscriberInitExt,
+};
+
+#[derive(Default)]
+struct AppState {
+    db: HashMap<String, Bytes>
+}
+type SharedState = Arc<RwLock<AppState>>;
 
 #[tokio::main]
 async fn main() {
     // initialize tracing
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| "example_key_value_store=debug,tower_http=debug".into()),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+    let shared_state = SharedState::default();
 
     // build our application with a route
     let app = Router::new()
@@ -24,7 +59,15 @@ async fn main() {
         .route("/users/:id", get(|params: axum::extract::Path<(u64, String)>| async move {
             let (id, username) = params.0;
             format!("Hello, {}! Your id is {}", username, id)
-        }));
+        }))
+        .nest("/admin", routes::admin::router())
+        .layer(ServiceBuilder::new()
+            .layer(HandleErrorLayer::new(handle_error))
+            .load_shed()
+            .concurrency_limit(1024)
+            .timeout(Duration::from_secs(10))
+            .layer(TraceLayer::new_for_http()))
+        .with_state(Arc::clone(&shared_state));
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
@@ -103,4 +146,13 @@ struct Group {
     id: u64,
     user_id: u64,
     name: String,
+}
+
+async fn handle_error(error: BoxError) -> impl IntoResponse {
+    if error.is::<tower::timeout::error::Elapsed>() {
+        return (StatusCode::REQUEST_TIMEOUT, Cow::from("Request timed out"));
+    } else if error.is::<tower::load_shed::error::Overloaded>() {
+        return (StatusCode::SERVICE_UNAVAILABLE, Cow::from("Service overloaded, try again later"));
+    }
+    (StatusCode::INTERNAL_SERVER_ERROR, Cow::from(format!("Unhandled error: {error}")))
 }
