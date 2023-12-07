@@ -7,9 +7,9 @@ edition = "2021"
 
 [dependencies]
 axum = { version = "0.7.2"}
-tokio = { version = "1.13.0", features = ["full"]}
-tower = { version = "*", features = ["full"]}
-serde = { version = "1.0.130", features = ["derive"]}
-serde_json = "1.0.68"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tokio = { version = "1.34.0", features = ["full"]}
+tower = { version = "0.4.13", features = ["full"]}
+serde = { version = "1.0.193", features = ["derive"]}
+serde_json = "1.0.108"
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

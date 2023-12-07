@@ -59,7 +59,7 @@ async fn create_group(
         user_id: payload.user_id,
         name: payload.name,
     };
-    (StatusCode::CREATED, group)
+    (StatusCode::CREATED, Json(group))
 }
 
 async fn create_user(
@@ -83,6 +83,7 @@ async fn create_user(
 struct CreateUser {
     username: String,
 }
+// the input to our 'create_group' handler
 #[derive(Deserialize)]
 struct CreateGroup {
     user_id: u64,
@@ -96,6 +97,7 @@ struct User {
     username: String,
 }
 
+// the output to our 'create_group' handler
 #[derive(Serialize)]
 struct Group {
     id: u64,
