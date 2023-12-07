@@ -20,6 +20,7 @@ async fn main() {
         .route("/users", get(|| async { "Hello, World!" }))
         // `POST /users` goes to `create_user`
         .route("/users", post(create_user))
+        .route("/groups", post(create_group))
         .route("/users/:id", get(|params: axum::extract::Path<(u64, String)>| async move {
             let (id, username) = params.0;
             format!("Hello, {}! Your id is {}", username, id)
@@ -50,6 +51,17 @@ async fn dashboard() -> &'static str {
     "Hi there world"
 }
 
+async fn create_group(
+    Json(payload): Json<CreateGroup>,
+) -> (StatusCode, Json<Group>) {
+    let group = Group {
+        id: 1,
+        user_id: payload.user_id,
+        name: payload.name,
+    };
+    (StatusCode::CREATED, group)
+}
+
 async fn create_user(
     // this argument tells axum to parse the request body
     // as JSON into a `CreateUser` type
@@ -71,10 +83,22 @@ async fn create_user(
 struct CreateUser {
     username: String,
 }
+#[derive(Deserialize)]
+struct CreateGroup {
+    user_id: u64,
+    name: String
+}
 
 // the output to our `create_user` handler
 #[derive(Serialize)]
 struct User {
     id: u64,
     username: String,
+}
+
+#[derive(Serialize)]
+struct Group {
+    id: u64,
+    user_id: u64,
+    name: String,
 }
