@@ -14,6 +14,9 @@ async fn main() {
     let app = Router::new()
         // `GET /` goes to `root`
         .route("/", get(root))
+        .route("/dashboard", get(dashboard))
+        .route("/login", get(get_login))
+        .route("/signup", get(get_signup))
         .route("/users", get(|| async { "Hello, World!" }))
         // `POST /users` goes to `create_user`
         .route("/users", post(create_user))
@@ -27,9 +30,24 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
+// Page for logging in
+async fn get_login() -> &'static str {
+    "Loggin"
+}
+
+// Page for signing up
+async fn get_signup() -> &'static str {
+    "Signup"
+}
+
 // basic handler that responds with a static string
 async fn root() -> &'static str {
     "Hello, World!"
+}
+
+// user dashboard get handler
+async fn dashboard() -> &'static str {
+    "Hi there world"
 }
 
 async fn create_user(
